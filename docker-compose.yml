@@ -1,0 +1,7 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag-p01-qdrant
+    ports:
+      - "6333:6333"  #used by Rest API
+      - "6334:6334"  #used by gRPC protocol

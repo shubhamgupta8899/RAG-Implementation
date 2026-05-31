@@ -32,13 +32,16 @@ public class RagController {
     @Value("classpath:/promptTemplates/ragTemplate.st")
     Resource promptTemplate;
 
+    @Value("classpath:/promptTemplates/systemTemplate.st")
+    Resource systemTemplate;
+
     @GetMapping("/chat")
     public ResponseEntity<String> chat(@RequestParam String question){
 
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(question)
                 .topK(4)
-                .similarityThreshold(0.4)
+                .similarityThreshold(0.5)
                 .build();
 
         List<Document> similarDocs =  vectorStore.similaritySearch(searchRequest);
@@ -60,6 +63,36 @@ public class RagController {
                 .user(question)
                 .call()
                 .content();
+        return ResponseEntity.ok(ans);
+    }
+
+    @GetMapping("/chat/pdf")
+    public ResponseEntity<String> chatPdf(@RequestParam String question){
+
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query(question)
+                .topK(10)
+                .similarityThreshold(0.5)
+                .build();
+
+        List<Document> similarDocs = vectorStore.similaritySearch(searchRequest);
+        String content = similarDocs.stream()
+                .map(this::documentContent)
+                .filter(t->t != null && !t.isBlank())
+                .collect(Collectors.joining(System.lineSeparator()+ "-----" + System.lineSeparator()));
+
+
+        if(content.isBlank()){
+            return ResponseEntity.ok("Sorry i could not find relevent information to your PDF. ");
+        }
+
+        String ans = chatClient.prompt()
+                .system(s->s.text(systemTemplate)
+                        .param("documents", content))
+                .user(question)
+                .call()
+                .content();
+
         return ResponseEntity.ok(ans);
     }
 
